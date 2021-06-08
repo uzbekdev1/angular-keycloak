@@ -19,31 +19,56 @@ export class AppComponent {
     this.claims = instance.profile;
     this.title = `${instance.profile?.lastName} ${instance.profile?.firstName}`;
 
-    this.loadData();
+    this.callApi();
+    this.callGrpc();
   }
 
 
-  loadData() {
+  callApi() {
 
     let url = 'http://localhost:4201/api/identity/info';
     let instance = this.keycloak.getKeycloakInstance();
-    let req = new XMLHttpRequest();
+    let xhr = new XMLHttpRequest();
 
     console.log('Token ', instance.token);
 
-    req.open('GET', url, true);
-    req.setRequestHeader('Accept', 'application/json');
-    req.setRequestHeader('Authorization', 'Bearer ' + instance.token);
-    req.onreadystatechange = () => {
-      if (req.readyState == 4) {
-        if (req.status == 200) {
-          alert('Success');
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.setRequestHeader('Authorization', 'Bearer ' + instance.token);
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState == 4) {
+        if (xhr.status == 200) {
+          alert('API -> Success');
         } else {
-          alert('Forbidden');
+          alert('API -> Forbidden');
         }
       }
     }
-    req.send();
+    xhr.send();
+
+  }
+
+  callGrpc() {
+
+    let url = 'http://localhost:4201/greet.Greeter/SayHello';
+    let instance = this.keycloak.getKeycloakInstance();
+    let xhr = new XMLHttpRequest();
+
+    console.log('Token ', instance.token);
+
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader("Content-Type", "application/grpc-web-text");
+    xhr.setRequestHeader('Authorization', 'Bearer ' + instance.token);
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState == 4) {
+        if (xhr.status == 200) {
+          alert('Grpc -> Success');
+        } else {
+          alert('Grpc -> Forbidden');
+        }
+      }
+    }
+    xhr.send("AAAAAAYKBHdlZXI=");
 
   }
 

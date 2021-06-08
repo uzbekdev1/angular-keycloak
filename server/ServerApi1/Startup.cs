@@ -1,28 +1,24 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.IdentityModel.Logging;
 using Microsoft.IdentityModel.Tokens;
 using ServerApi1.Filters;
+using ServerApi1.Services;
 
 namespace ServerApi1
 {
     public class Startup
     {
+
         private static readonly IWebProxy _proxy = new WebProxy("http://192.168.15.3:8080", true)
         {
             UseDefaultCredentials = false,
@@ -36,6 +32,7 @@ namespace ServerApi1
         }
 
         public IConfiguration Configuration { get; }
+
         public IWebHostEnvironment Environment { get; }
 
         public void ConfigureServices(IServiceCollection services)
@@ -44,12 +41,12 @@ namespace ServerApi1
             if (Environment.IsDevelopment())
             {
                 IdentityModelEventSource.ShowPII = true;
-
                 ServicePointManager.ServerCertificateValidationCallback += (a, b, c, d) => true;
                 HttpClient.DefaultProxy = _proxy;
             }
 
             services.AddControllers();
+            services.AddGrpc();
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -67,12 +64,16 @@ namespace ServerApi1
                         ValidateLifetime = true,
                         ClockSkew = TimeSpan.Zero
                     };
-                }); 
+                });
             services.AddAuthorization();
-           
+
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "ServerApi1", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo
+                {
+                    Title = "ServerApi1",
+                    Version = "v1"
+                });
                 c.OperationFilter<AuthOperationFilter>();
                 c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
                 {
@@ -84,7 +85,7 @@ namespace ServerApi1
                 });
             });
 
-            services.AddCors(options => options.AddPolicy("AllowAll",builder => builder.AllowAnyHeader().AllowAnyOrigin().AllowAnyMethod().SetIsOriginAllowed(s => true)));
+            services.AddCors(options => options.AddPolicy("AllowAll", builder => builder.AllowAnyHeader().AllowAnyOrigin().AllowAnyMethod().SetIsOriginAllowed(s => true)));
 
         }
 
@@ -100,7 +101,6 @@ namespace ServerApi1
 
             app.UseSwaggerUI(c =>
             {
-                c.RoutePrefix = "";
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "ServerApi1 v1");
             });
 
@@ -108,12 +108,22 @@ namespace ServerApi1
 
             app.UseRouting();
 
-            app.UseAuthentication();  
+            app.UseAuthentication();
             app.UseAuthorization();
+
+            app.UseGrpcWeb(new GrpcWebOptions()
+            {
+                DefaultEnabled = true
+            });
 
             app.UseEndpoints(endpoints =>
             {
+                endpoints.MapGrpcService<GreeterService>();
+
                 endpoints.MapControllers();
+
+                endpoints.MapGet("/", context => context.Response.WriteAsync("Communication with gRPC endpoints must be made through a gRPC client."));
+
             });
         }
     }
